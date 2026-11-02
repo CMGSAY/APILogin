@@ -21,7 +21,7 @@ x-api-key: LoginParqueo_2026_JVC_KEY
 
 - **Método y Ruta:** `POST /api/registro`
 - **URL completa:** `https://apilogin-qh0o.onrender.com/api/registro`
-- **Body (JSON):** `nombre`, `apellido`, `usuario`, `correo`, `password` *(también acepta `contrasena`)*. El backend asigna y fuerza automáticamente `rol = 2` (Usuario normal).
+- **Body (JSON):** `nombre`, `apellido`, `usuario`, `correo`, `password` *(también acepta `contrasena`)*. El `rol` es opcional (`1` = Admin, `2` = Usuario; si no lo mandas se asigna `2` por defecto).
 
 ```json
 {
@@ -29,7 +29,8 @@ x-api-key: LoginParqueo_2026_JVC_KEY
   "apellido": "Pérez",
   "usuario": "jperez",
   "correo": "juan@correo.com",
-  "password": "MiPassword123"
+  "password": "MiPassword123",
+  "rol": 2
 }
 ```
 
@@ -87,4 +88,3 @@ x-api-key: LoginParqueo_2026_JVC_KEY
   "rol": 1
 }
 ```
-
