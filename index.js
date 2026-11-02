@@ -28,8 +28,216 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 app.get('/', (req, res) => {
   res.status(200).json({
     ok: true,
-    mensaje: 'API de Autenticación activa y funcionando'
+    mensaje: 'API de Autenticación activa y funcionando',
+    documentacion_swagger: '/api-docs'
   });
+});
+
+// Especificación OpenAPI 3.0 para Swagger UI
+const openApiSpec = {
+  openapi: '3.0.0',
+  info: {
+    title: 'API de Login y Usuarios - Parqueo',
+    version: '1.0.0',
+    description: 'Documentación interactiva para Registro, Login y Gestión de Roles (1 = Admin, 2 = Usuario).'
+  },
+  servers: [
+    {
+      url: 'https://apilogin-qh0o.onrender.com',
+      description: 'Servidor en Render (Producción)'
+    },
+    {
+      url: 'http://localhost:3000',
+      description: 'Servidor Local (localhost:3000)'
+    }
+  ],
+  components: {
+    securitySchemes: {
+      ApiKeyAuth: {
+        type: 'apiKey',
+        in: 'header',
+        name: 'x-api-key',
+        description: 'Ingresa tu API Key (ej. LoginParqueo_2026_JVC_KEY)'
+      }
+    }
+  },
+  security: [{ ApiKeyAuth: [] }],
+  paths: {
+    '/api/registro': {
+      post: {
+        summary: 'Registrar un nuevo usuario (asigna rol = 2 automáticamente)',
+        tags: ['Autenticación'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['nombre', 'apellido', 'usuario', 'correo', 'password'],
+                properties: {
+                  nombre: { type: 'string', example: 'Admin' },
+                  apellido: { type: 'string', example: 'Principal' },
+                  usuario: { type: 'string', example: 'adminparqueo' },
+                  correo: { type: 'string', example: 'admin@parqueo.com' },
+                  password: { type: 'string', example: 'Admin123456' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          201: { description: 'Usuario registrado exitosamente' },
+          400: { description: 'Faltan campos obligatorios' },
+          401: { description: 'API Key inválida o no proporcionada' },
+          409: { description: 'El usuario o correo ya existe' }
+        }
+      }
+    },
+    '/api/login': {
+      post: {
+        summary: 'Iniciar sesión y obtener datos del usuario (incluyendo su ID y rol)',
+        tags: ['Autenticación'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['correo', 'password'],
+                properties: {
+                  correo: { type: 'string', example: 'admin@parqueo.com' },
+                  password: { type: 'string', example: 'Admin123456' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Inicio de sesión exitoso' },
+          401: { description: 'Credenciales inválidas o API Key incorrecta' }
+        }
+      }
+    },
+    '/api/usuarios/{id}': {
+      get: {
+        summary: 'Consultar datos de un usuario por su ID',
+        tags: ['Usuarios'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'ID del usuario en Supabase'
+          }
+        ],
+        responses: {
+          200: { description: 'Datos del usuario' },
+          404: { description: 'Usuario no encontrado' }
+        }
+      }
+    },
+    '/api/usuarios/{id}/rol': {
+      put: {
+        summary: 'Cambiar el rol de un usuario (1 = Admin, 2 = Usuario)',
+        tags: ['Usuarios'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'ID del usuario que deseas convertir en Admin'
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['rol'],
+                properties: {
+                  rol: {
+                    type: 'integer',
+                    enum: [1, 2],
+                    example: 1,
+                    description: '1 = Administrador, 2 = Usuario normal'
+                  }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Rol actualizado exitosamente' },
+          404: { description: 'Usuario no encontrado' }
+        }
+      }
+    },
+    '/api/usuarios/{id}/password': {
+      put: {
+        summary: 'Cambiar la contraseña de un usuario',
+        tags: ['Usuarios'],
+        parameters: [
+          {
+            name: 'id',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'ID del usuario'
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['passwordActual', 'passwordNuevo'],
+                properties: {
+                  passwordActual: { type: 'string', example: 'Admin123456' },
+                  passwordNuevo: { type: 'string', example: 'NuevaClave2026' }
+                }
+              }
+            }
+          }
+        },
+        responses: {
+          200: { description: 'Contraseña actualizada correctamente' },
+          401: { description: 'La contraseña actual es incorrecta' }
+        }
+      }
+    }
+  }
+};
+
+app.get('/openapi.json', (req, res) => {
+  res.json(openApiSpec);
+});
+
+app.get('/api-docs', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Swagger UI - API Login Parqueo</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        persistAuthorization: true
+      });
+    };
+  </script>
+</body>
+</html>`);
 });
 
 const validarApiKey = (req, res, next) => {
@@ -47,7 +255,7 @@ const validarApiKey = (req, res, next) => {
 
 app.post('/api/registro', validarApiKey, async (req, res) => {
   try {
-    const { nombre, apellido, usuario, correo, password, contrasena, rol } = req.body;
+    const { nombre, apellido, usuario, correo, password, contrasena } = req.body;
     const passwordPlano = password || contrasena;
 
     if (!nombre || !apellido || !usuario || !correo || !passwordPlano) {
@@ -60,13 +268,14 @@ app.post('/api/registro', validarApiKey, async (req, res) => {
     const saltRounds = 10;
     const passwordEncriptado = await bcrypt.hash(passwordPlano, saltRounds);
 
+    // Por seguridad, el registro público siempre fuerza rol = 2 (Usuario normal)
     const nuevoUsuario = {
       nombre,
       apellido,
       usuario,
       correo,
       password: passwordEncriptado,
-      rol: rol !== undefined ? rol : 2
+      rol: 2
     };
 
     const { data, error } = await supabase
