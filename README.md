@@ -49,7 +49,36 @@ x-api-key: LoginParqueo_2026_JVC_KEY
 }
 ```
 
-*(Si es correcto, devolverá un status `200` con `ok: true` y los datos del usuario: `id`, `nombre`, `apellido`, `usuario`, `correo` y `rol`).*
+*(Si es correcto, devolverá un status `200` con `ok: true`, el **`token` JWT** (`token` y `access_token`) y los datos del usuario: `id`, `nombre`, `apellido`, `usuario`, `correo` y `rol`).*
+
+**Respuesta de ejemplo:**
+```json
+{
+  "ok": true,
+  "mensaje": "Inicio de sesión exitoso",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "usuario": {
+    "id": 1,
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "usuario": "jperez",
+    "correo": "juan@correo.com",
+    "rol": 2
+  }
+}
+```
+
+---
+
+## 3.1. Verificar Token JWT / Obtener Perfil del Usuario
+
+- **Método y Ruta:** `GET /api/verificar-token` (o `GET /api/perfil`)
+- **Headers requeridos:**
+```http
+Authorization: Bearer AQUI_EL_TOKEN_JWT
+```
+*(Verifica que el token JWT sea válido, no haya expirado y devuelve los datos del usuario que vienen dentro del token).*
 
 ---
 

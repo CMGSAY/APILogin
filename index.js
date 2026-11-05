@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -17,6 +18,8 @@ const PORT = process.env.PORT || 3000;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const MI_API_KEY_SECRETA = process.env.MI_API_KEY_SECRETA;
+const JWT_SECRET = process.env.JWT_SECRET || 'Parqueo_JWT_Secret_2026_Key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Error crítico: Faltan las variables SUPABASE_URL o SUPABASE_KEY en el archivo .env');
@@ -32,17 +35,78 @@ app.get('/', (req, res) => {
   });
 });
 
-const validarApiKey = (req, res, next) => {
-  const apiKey = req.header('x-api-key');
+const generarTokenJWT = (usuario) => {
+  const payload = {
+    sub: usuario.id,
+    id: usuario.id,
+    nombre: usuario.nombre,
+    apellido: usuario.apellido,
+    usuario: usuario.usuario,
+    correo: usuario.correo,
+    email: usuario.correo,
+    rol: usuario.rol,
+    rol_id: usuario.rol
+  };
 
-  if (!apiKey || apiKey !== MI_API_KEY_SECRETA) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+};
+
+const extraerBearerToken = (req) => {
+  const authHeader = req.header('Authorization') || req.header('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7).trim();
+  }
+  return null;
+};
+
+// Middleware estricto para validar el Token JWT (también puedes copiarlo a tu otra API)
+const validarJWT = (req, res, next) => {
+  const token = extraerBearerToken(req);
+
+  if (!token) {
     return res.status(401).json({
       ok: false,
-      mensaje: 'No autorizado: API Key inválida o no proporcionada'
+      mensaje: 'No autorizado: Token JWT no proporcionado (Usa Authorization: Bearer <token>)'
     });
   }
 
-  next();
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.usuario = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      ok: false,
+      mensaje: 'No autorizado: Token JWT inválido o expirado'
+    });
+  }
+};
+
+const validarApiKey = (req, res, next) => {
+  const apiKey = req.header('x-api-key');
+  const token = extraerBearerToken(req);
+
+  if (apiKey && apiKey === MI_API_KEY_SECRETA) {
+    return next();
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.usuario = decoded;
+      return next();
+    } catch (err) {
+      return res.status(401).json({
+        ok: false,
+        mensaje: 'No autorizado: Token JWT inválido o expirado'
+      });
+    }
+  }
+
+  return res.status(401).json({
+    ok: false,
+    mensaje: 'No autorizado: API Key o Token JWT inválido o no proporcionado'
+  });
 };
 
 app.post('/api/registro', validarApiKey, async (req, res) => {
@@ -91,9 +155,13 @@ app.post('/api/registro', validarApiKey, async (req, res) => {
       });
     }
 
+    const token = generarTokenJWT(data);
+
     return res.status(201).json({
       ok: true,
       mensaje: 'Usuario registrado exitosamente',
+      token,
+      access_token: token,
       usuario: data
     });
   } catch (err) {
@@ -147,9 +215,13 @@ app.post('/api/login', validarApiKey, async (req, res) => {
       });
     }
 
+    const token = generarTokenJWT(usuarioEncontrado);
+
     return res.status(200).json({
       ok: true,
       mensaje: 'Inicio de sesión exitoso',
+      token,
+      access_token: token,
       usuario: {
         id: usuarioEncontrado.id,
         nombre: usuarioEncontrado.nombre,
@@ -166,6 +238,21 @@ app.post('/api/login', validarApiKey, async (req, res) => {
       mensaje: 'Error interno del servidor al procesar el inicio de sesión'
     });
   }
+});
+
+app.get('/api/verificar-token', validarJWT, (req, res) => {
+  return res.status(200).json({
+    ok: true,
+    mensaje: 'Token JWT válido',
+    usuario: req.usuario
+  });
+});
+
+app.get('/api/perfil', validarJWT, (req, res) => {
+  return res.status(200).json({
+    ok: true,
+    usuario: req.usuario
+  });
 });
 
 app.get('/api/usuarios/:id', validarApiKey, async (req, res) => {
